@@ -118,6 +118,25 @@ VALUES
     'USD',
     600.00,
     'ACTIVE'
+),
+
+(
+    'EEEEEEE1-5555-5555-5555-555555555555',
+    '11111111-1111-1111-1111-111111111111',
+    '1000000009',
+    'SAVINGS',
+    'USD',
+    500.00,
+    'BLOCKED'
+),
+(
+    'FFFFFFF1-6666-6666-6666-666666666666',
+    '22222222-2222-2222-2222-222222222222',
+    '1000000010',
+    'CHECKING',
+    'USD',
+    0.00,
+    'CLOSED'
 );
 
 -- ==========================================
@@ -288,4 +307,95 @@ VALUES
     75.00,
     'SUCCESS',
     'Transferencia recibida'
+),
+
+(
+    NEWID(),
+    'AAAAAAA1-1111-1111-1111-111111111111',
+    'TRX-20260613-DEP001',
+    'DEPOSIT',
+    1000.00,
+    'SUCCESS',
+    'Deposito en ventanilla'
+),
+(
+    NEWID(),
+    'AAAAAAA1-1111-1111-1111-111111111111',
+    'TRX-20260613-WIT001',
+    'WITHDRAWAL',
+    200.00,
+    'SUCCESS',
+    'Retiro en cajero'
+),
+(
+    NEWID(),
+    'BBBBBBB1-2222-2222-2222-222222222222',
+    'TRX-20260612-DEP002',
+    'DEPOSIT',
+    500.00,
+    'SUCCESS',
+    'Deposito electronico'
+),
+(
+    NEWID(),
+    'BBBBBBB1-2222-2222-2222-222222222222',
+    'TRX-20260612-WIT002',
+    'WITHDRAWAL',
+    100.00,
+    'SUCCESS',
+    'Retiro en ventanilla'
+),
+(
+    NEWID(),
+    'CCCCCCC1-3333-3333-3333-333333333333',
+    'TRX-20260611-DEP003',
+    'DEPOSIT',
+    2000.00,
+    'SUCCESS',
+    'Deposito nomina'
+),
+(
+    NEWID(),
+    'CCCCCCC1-3333-3333-3333-333333333333',
+    'TRX-20260611-WIT003',
+    'WITHDRAWAL',
+    350.00,
+    'SUCCESS',
+    'Retiro en cajero'
+),
+(
+    NEWID(),
+    'DDDDDDD1-4444-4444-4444-444444444444',
+    'TRX-20260610-DEP004',
+    'DEPOSIT',
+    750.00,
+    'SUCCESS',
+    'Deposito en ventanilla'
+),
+(
+    NEWID(),
+    'DDDDDDD1-4444-4444-4444-444444444444',
+    'TRX-20260610-WIT004',
+    'WITHDRAWAL',
+    50.00,
+    'SUCCESS',
+    'Retiro en cajero'
+),
+(
+    NEWID(),
+    'AAAAAAA2-1111-1111-1111-111111111111',
+    'TRX-20260609-DEP005',
+    'DEPOSIT',
+    300.00,
+    'SUCCESS',
+    'Deposito electronico'
+),
+(
+    NEWID(),
+    'AAAAAAA2-1111-1111-1111-111111111111',
+    'TRX-20260609-WIT005',
+    'WITHDRAWAL',
+    150.00,
+    'SUCCESS',
+    'Retiro en ventanilla'
 );
