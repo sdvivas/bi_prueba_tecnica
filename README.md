@@ -15,7 +15,7 @@ Internet → ALB (public subnets) → ECS Fargate (private subnets) → RDS SQL 
 **Componentes AWS:**
 - **VPC** con subnets públicas (ALB) y privadas (ECS, RDS)
 - **Application Load Balancer** como punto de entrada
-- **ECS Fargate** ejecutando el contenedor del microservicio (2 réplicas)
+- **ECS Fargate** ejecutando el contenedor del microservicio (2-10 réplicas con Auto Scaling)
 - **RDS SQL Server** como base de datos relacional
 - **Secrets Manager** para gestión de credenciales
 - **NAT Gateway** para que ECS acceda a ECR desde subnets privadas
@@ -196,6 +196,21 @@ Se utiliza **locking pesimista** (`SELECT ... FOR UPDATE`) para evitar que dos o
 
 ### Idempotencia
 Cada transacción tiene una referencia única (constraint UNIQUE en BD). Si se intenta registrar una transacción duplicada, la BD la rechaza.
+
+### Alta Disponibilidad y Escalabilidad
+
+**Multi-AZ en RDS:**
+El template de RDS usa `MultiAZ: false` porque SQL Server Express Edition no soporta despliegue Multi-AZ en AWS. Para un entorno de producción real, se migraría a SQL Server Standard o Enterprise, que sí soportan Multi-AZ con failover automático. El diseño de red ya está preparado para esto: la BD se despliega en un DB Subnet Group que abarca 2 AZs (`us-east-1a` y `us-east-1b`), por lo que el cambio sería únicamente de tier del motor sin modificar la infraestructura de red.
+
+**Auto Scaling en ECS:**
+El servicio ECS tiene configurado Auto Scaling con las siguientes políticas:
+- **Mínimo:** 2 tasks (garantiza disponibilidad si una AZ falla)
+- **Máximo:** 10 tasks (absorbe picos de hasta 5x sin intervención)
+- **Escalado por CPU:** si el promedio supera 70%, se agregan tasks (cooldown de 60s para scale-out)
+- **Escalado por Memoria:** si el promedio supera 75%, se agregan tasks
+- **Scale-in cooldown:** 300s para evitar oscilaciones
+
+Ante un escenario de tráfico 10x, el ALB distribuye carga entre las tasks disponibles, el Auto Scaling agrega instancias en 60s, y si se necesita más de 10 tasks se ajusta `MaxCapacity`.
 
 ### Resiliencia ante fallo del contenedor
 Si el contenedor ECS muere a mitad de una operación, la transacción SQL nunca hace commit → rollback automático. ECS Fargate detecta el contenedor caído y lanza uno nuevo. El estado de la BD permanece consistente.
