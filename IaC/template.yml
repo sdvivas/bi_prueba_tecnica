@@ -1,0 +1,177 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: NovoBanco Account Service - Main Stack
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: novobanco-prod
+
+  ProjectName:
+    Type: String
+    Default: novobanco
+
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+
+  PublicSubnet1Cidr:
+    Type: String
+    Default: 10.0.1.0/24
+
+  PublicSubnet2Cidr:
+    Type: String
+    Default: 10.0.2.0/24
+
+  PrivateSubnet1Cidr:
+    Type: String
+    Default: 10.0.3.0/24
+
+  PrivateSubnet2Cidr:
+    Type: String
+    Default: 10.0.4.0/24
+
+  AvailabilityZone1:
+    Type: String
+    Default: us-east-1a
+
+  AvailabilityZone2:
+    Type: String
+    Default: us-east-1b
+
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.small
+
+  DBName:
+    Type: String
+    Default: novobanco
+
+  DBUsername:
+    Type: String
+    Default: sa
+
+  DBPort:
+    Type: String
+    Default: '1433'
+
+  ContainerImage:
+    Type: String
+
+  ContainerPort:
+    Type: String
+    Default: '8080'
+
+  ContainerCpu:
+    Type: String
+    Default: '512'
+
+  ContainerMemory:
+    Type: String
+    Default: '1024'
+
+  DesiredCount:
+    Type: String
+    Default: '2'
+
+  ALBHealthCheckPath:
+    Type: String
+    Default: /api/actuator/health
+
+Resources:
+  VpcStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./internal-templates/vpc.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        VpcCidr: !Ref VpcCidr
+        PublicSubnet1Cidr: !Ref PublicSubnet1Cidr
+        PublicSubnet2Cidr: !Ref PublicSubnet2Cidr
+        PrivateSubnet1Cidr: !Ref PrivateSubnet1Cidr
+        PrivateSubnet2Cidr: !Ref PrivateSubnet2Cidr
+        AvailabilityZone1: !Ref AvailabilityZone1
+        AvailabilityZone2: !Ref AvailabilityZone2
+
+  SecurityGroupsStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: VpcStack
+    Properties:
+      TemplateURL: ./internal-templates/security-groups.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        VpcId: !GetAtt VpcStack.Outputs.VpcId
+        ContainerPort: !Ref ContainerPort
+        DBPort: !Ref DBPort
+
+  SecretsStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: ./internal-templates/secrets.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        DBUsername: !Ref DBUsername
+
+  RdsStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - SecurityGroupsStack
+      - SecretsStack
+    Properties:
+      TemplateURL: ./internal-templates/rds.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        DBInstanceClass: !Ref DBInstanceClass
+        DBName: !Ref DBName
+        DBUsername: !Ref DBUsername
+        DBPort: !Ref DBPort
+        PrivateSubnet1Id: !GetAtt VpcStack.Outputs.PrivateSubnet1Id
+        PrivateSubnet2Id: !GetAtt VpcStack.Outputs.PrivateSubnet2Id
+        RdsSecurityGroupId: !GetAtt SecurityGroupsStack.Outputs.RdsSecurityGroupId
+        DBSecretArn: !GetAtt SecretsStack.Outputs.DBSecretArn
+
+  AlbStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: SecurityGroupsStack
+    Properties:
+      TemplateURL: ./internal-templates/alb.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        VpcId: !GetAtt VpcStack.Outputs.VpcId
+        PublicSubnet1Id: !GetAtt VpcStack.Outputs.PublicSubnet1Id
+        PublicSubnet2Id: !GetAtt VpcStack.Outputs.PublicSubnet2Id
+        AlbSecurityGroupId: !GetAtt SecurityGroupsStack.Outputs.AlbSecurityGroupId
+        ContainerPort: !Ref ContainerPort
+        ALBHealthCheckPath: !Ref ALBHealthCheckPath
+
+  EcsStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+      - RdsStack
+      - AlbStack
+    Properties:
+      TemplateURL: ./internal-templates/ecs.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        ProjectName: !Ref ProjectName
+        ContainerImage: !Ref ContainerImage
+        ContainerPort: !Ref ContainerPort
+        ContainerCpu: !Ref ContainerCpu
+        ContainerMemory: !Ref ContainerMemory
+        DesiredCount: !Ref DesiredCount
+        PrivateSubnet1Id: !GetAtt VpcStack.Outputs.PrivateSubnet1Id
+        PrivateSubnet2Id: !GetAtt VpcStack.Outputs.PrivateSubnet2Id
+        EcsSecurityGroupId: !GetAtt SecurityGroupsStack.Outputs.EcsSecurityGroupId
+        TargetGroupArn: !GetAtt AlbStack.Outputs.TargetGroupArn
+        DBSecretArn: !GetAtt SecretsStack.Outputs.DBSecretArn
+        RdsEndpoint: !GetAtt RdsStack.Outputs.RdsEndpoint
+        DBName: !Ref DBName
+        DBPort: !Ref DBPort
+
+Outputs:
+  LoadBalancerUrl:
+    Description: URL of the Application Load Balancer
+    Value: !GetAtt AlbStack.Outputs.AlbDnsName
+
+  RdsEndpoint:
+    Description: RDS SQL Server endpoint
+    Value: !GetAtt RdsStack.Outputs.RdsEndpoint

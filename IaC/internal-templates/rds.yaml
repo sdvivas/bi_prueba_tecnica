@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: RDS SQL Server instance
+
+Parameters:
+  EnvironmentName:
+    Type: String
+
+  DBInstanceClass:
+    Type: String
+
+  DBName:
+    Type: String
+
+  DBUsername:
+    Type: String
+
+  DBPort:
+    Type: String
+
+  PrivateSubnet1Id:
+    Type: String
+
+  PrivateSubnet2Id:
+    Type: String
+
+  RdsSecurityGroupId:
+    Type: String
+
+  DBSecretArn:
+    Type: String
+
+Resources:
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets for RDS SQL Server
+      SubnetIds:
+        - !Ref PrivateSubnet1Id
+        - !Ref PrivateSubnet2Id
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-db-subnet-group
+
+  DBInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub ${EnvironmentName}-sqlserver
+      Engine: sqlserver-ex
+      EngineVersion: '15.00'
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: 20
+      MaxAllocatedStorage: 50
+      StorageType: gp3
+      MasterUsername: !Sub '{{resolve:secretsmanager:${DBSecretArn}:SecretString:username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${DBSecretArn}:SecretString:password}}'
+      Port: !Ref DBPort
+      VPCSecurityGroups:
+        - !Ref RdsSecurityGroupId
+      DBSubnetGroup: !Ref DBSubnetGroup
+      MultiAZ: false
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 7
+      DeletionProtection: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-rds
+
+Outputs:
+  RdsEndpoint:
+    Value: !GetAtt DBInstance.Endpoint.Address

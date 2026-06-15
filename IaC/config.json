@@ -1,0 +1,27 @@
+{
+  "Parameters": {
+    "EnvironmentName": "novobanco-prod",
+    "ProjectName": "novobanco",
+
+    "VpcCidr": "10.0.0.0/16",
+    "PublicSubnet1Cidr": "10.0.1.0/24",
+    "PublicSubnet2Cidr": "10.0.2.0/24",
+    "PrivateSubnet1Cidr": "10.0.3.0/24",
+    "PrivateSubnet2Cidr": "10.0.4.0/24",
+    "AvailabilityZone1": "us-east-1a",
+    "AvailabilityZone2": "us-east-1b",
+
+    "DBInstanceClass": "db.t3.small",
+    "DBName": "novobanco",
+    "DBUsername": "sa",
+    "DBPort": "1433",
+
+    "ContainerImage": "123456789012.dkr.ecr.us-east-1.amazonaws.com/novobanco/account-service:latest",
+    "ContainerPort": "8080",
+    "ContainerCpu": "512",
+    "ContainerMemory": "1024",
+    "DesiredCount": "2",
+
+    "ALBHealthCheckPath": "/api/actuator/health"
+  }
+}
