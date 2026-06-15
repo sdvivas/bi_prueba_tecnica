@@ -118,6 +118,66 @@ Base URL: `http://localhost:8080/api`
 | 422 | Regla de negocio violada (saldo insuficiente, cuenta bloqueada) |
 | 500 | Error interno |
 
+## Pruebas
+
+### Pruebas unitarias (16 tests)
+
+Se testea la lógica de negocio de los servicios usando **JUnit 5 + Mockito**, sin conexión a base de datos:
+
+**AccountServiceTest (6 tests):**
+- Crear cuenta con cliente válido
+- Crear cuenta con cliente inexistente → `ClientNotFoundException`
+- Obtener cuenta existente
+- Obtener cuenta inexistente → `AccountNotFoundException`
+- Obtener balance exitoso
+- Obtener balance de cuenta inexistente → `AccountNotFoundException`
+
+**TransactionServiceTest (10 tests):**
+- Depósito exitoso → saldo aumenta
+- Depósito a cuenta bloqueada → `AccountNotActiveException`
+- Depósito a cuenta inexistente → `AccountNotFoundException`
+- Retiro exitoso → saldo disminuye
+- Retiro con saldo insuficiente → `InsufficientFundsException`
+- Retiro de cuenta bloqueada → `AccountNotActiveException`
+- Transferencia exitosa → saldos se mueven correctamente
+- Transferencia a misma cuenta → `IllegalArgumentException`
+- Transferencia con saldo insuficiente → `InsufficientFundsException`
+- Historial paginado devuelve resultados correctos
+
+Ejecutar:
+```bash
+cd account-service
+mvnw.cmd test -Dtest="!ConcurrencyIntegrationTest"
+```
+
+### Prueba de integración: Concurrencia
+
+Se valida que el **locking pesimista** previene race conditions en operaciones financieras concurrentes.
+
+**Escenario:** Una cuenta con saldo de $1,000. Se lanzan 10 hilos simultáneos que intentan retirar $200 cada uno.
+
+**Resultado esperado:**
+- 5 retiros exitosos (5 × $200 = $1,000)
+- 5 retiros rechazados por saldo insuficiente
+- Saldo final = $0 (nunca negativo)
+
+**Resultado obtenido:** El test pasa consistentemente, demostrando que el locking pesimista serializa los accesos y previene inconsistencias.
+
+Este test requiere SQL Server corriendo localmente (Docker):
+```bash
+cd account-service
+mvnw.cmd test -Dtest=ConcurrencyIntegrationTest
+```
+
+### Pipeline CI (GitHub Actions)
+
+Ante cada push o pull request a `main`, se ejecuta automáticamente:
+1. Compilación del proyecto
+2. Ejecución de los 16 tests unitarios
+3. Build de la imagen Docker
+
+El test de integración se excluye del CI porque requiere una instancia de SQL Server.
+
 ## Escenarios de Negocio
 
 ### Saldo nunca negativo
